@@ -49,27 +49,30 @@ def load_county_geojson():
 
 @st.cache_data
 def load_fips_lookup():
-    url = "https://raw.githubusercontent.com/kjhealy/fips-codes/master/county_fips_master.csv"
+    url = "https://www2.census.gov/geo/docs/reference/codes/files/national_county.txt"
 
     fips = pd.read_csv(
         url,
-        dtype={"fips": str},
-        encoding="latin1",
-        engine="python"
+        header=None,
+        dtype=str,
+        names=["state", "statefp", "countyfp", "county_name", "classfp"]
     )
 
+    fips["fips"] = fips["statefp"] + fips["countyfp"]
+
     fips["county_name"] = (
-        fips["name"]
+        fips["county_name"]
         .astype(str)
         .str.replace(" County", "", regex=False)
         .str.replace(" Parish", "", regex=False)
         .str.replace(" Borough", "", regex=False)
+        .str.replace(" Census Area", "", regex=False)
+        .str.replace(" Municipality", "", regex=False)
         .str.strip()
         .str.upper()
     )
 
     fips["state"] = fips["state"].astype(str).str.upper().str.strip()
-    fips["fips"] = fips["fips"].str.zfill(5)
 
     return fips[["fips", "county_name", "state"]]
 
@@ -94,6 +97,8 @@ missing_cols = [col for col in required_cols if col not in df.columns]
 
 if missing_cols:
     st.error(f"Missing required columns: {missing_cols}")
+    st.write("Available columns:")
+    st.write(list(df.columns))
     st.stop()
 
 df = df.dropna(subset=[purchase_col, sale_col, county_col]).copy()
@@ -136,6 +141,39 @@ df["State"] = (
     .str.replace(".", "", regex=False)
     .str.strip()
 )
+
+state_name_to_abbr = {
+    "ALABAMA": "AL",
+    "ALASKA": "AK",
+    "ARIZONA": "AZ",
+    "ARKANSAS": "AR",
+    "CALIFORNIA": "CA",
+    "COLORADO": "CO",
+    "FLORIDA": "FL",
+    "GEORGIA": "GA",
+    "IDAHO": "ID",
+    "ILLINOIS": "IL",
+    "INDIANA": "IN",
+    "KANSAS": "KS",
+    "MICHIGAN": "MI",
+    "MISSOURI": "MO",
+    "MONTANA": "MT",
+    "NEVADA": "NV",
+    "NEW MEXICO": "NM",
+    "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC",
+    "OHIO": "OH",
+    "OKLAHOMA": "OK",
+    "OREGON": "OR",
+    "PENNSYLVANIA": "PA",
+    "TENNESSEE": "TN",
+    "TEXAS": "TX",
+    "UTAH": "UT",
+    "WASHINGTON": "WA",
+    "WYOMING": "WY"
+}
+
+df["State"] = df["State"].replace(state_name_to_abbr)
 
 df["County_Key"] = df["County"].astype(str).str.upper().str.strip()
 
