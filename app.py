@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import json
 from urllib.request import urlopen
@@ -20,14 +19,17 @@ DATA_PATH = "Cash Sales - AI Stats.xlsx"
 def make_unique_columns(columns):
     seen = {}
     new_cols = []
+
     for col in columns:
         col = str(col).strip()
+
         if col in seen:
             seen[col] += 1
             new_cols.append(f"{col}_{seen[col]}")
         else:
             seen[col] = 0
             new_cols.append(col)
+
     return new_cols
 
 
@@ -48,7 +50,14 @@ def load_county_geojson():
 @st.cache_data
 def load_fips_lookup():
     url = "https://raw.githubusercontent.com/kjhealy/fips-codes/master/county_fips_master.csv"
-    fips = pd.read_csv(url, dtype={"fips": str})
+
+    fips = pd.read_csv(
+        url,
+        dtype={"fips": str},
+        encoding="latin1",
+        engine="python"
+    )
+
     fips["county_name"] = (
         fips["name"]
         .astype(str)
@@ -58,8 +67,10 @@ def load_fips_lookup():
         .str.strip()
         .str.upper()
     )
+
     fips["state"] = fips["state"].astype(str).str.upper().str.strip()
     fips["fips"] = fips["fips"].str.zfill(5)
+
     return fips[["fips", "county_name", "state"]]
 
 
@@ -106,7 +117,11 @@ df["County_State_Clean"] = df[county_col].astype(str).str.strip()
 split_cols = df["County_State_Clean"].str.split(",", expand=True, n=1)
 
 df["County"] = split_cols[0].astype(str).str.strip()
-df["State"] = split_cols[1].astype(str).str.strip() if split_cols.shape[1] > 1 else ""
+
+if split_cols.shape[1] > 1:
+    df["State"] = split_cols[1].astype(str).str.strip()
+else:
+    df["State"] = ""
 
 df["County"] = (
     df["County"]
@@ -198,10 +213,12 @@ if county_summary.empty:
 
 county_summary["ROI_Score"] = county_summary["Avg_ROI"].rank(pct=True) * 100
 county_summary["Profit_Score"] = county_summary["Avg_Profit"].rank(pct=True) * 100
+
 county_summary["Velocity_Score"] = county_summary["Avg_Days_to_Sell"].rank(
     ascending=False,
     pct=True
 ) * 100
+
 county_summary["Success_Score"] = county_summary["Success_Rate"].rank(pct=True) * 100
 
 county_summary["Investment_Score"] = (
@@ -233,12 +250,14 @@ col5.metric("Ranked Counties", f"{total_counties:,}")
 
 st.divider()
 
-best_county = county_summary.sort_values("Investment_Score", ascending=False).iloc[0]
+best_county = county_summary.sort_values(
+    "Investment_Score",
+    ascending=False
+).iloc[0]
 
 st.success(
-    f"Top recommended county based on Investment Score: "
-    f"{best_county['County']}, {best_county['State']} "
-    f"with score {best_county['Investment_Score']:.1f}"
+    f"Top recommended county: {best_county['County']}, {best_county['State']} "
+    f"| Investment Score: {best_county['Investment_Score']:.1f}"
 )
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
