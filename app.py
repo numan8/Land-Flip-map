@@ -14,7 +14,7 @@ st.set_page_config(
 st.title("🏡 Property Investment ROI Heat Map")
 st.write("County-level investment analysis using historical property purchase and cash sale data.")
 
-DATA_PATH = "data/Cash Sales - AI Stats.xlsx"
+DATA_PATH = "Cash Sales - AI Stats.xlsx"
 
 @st.cache_data
 def load_data():
